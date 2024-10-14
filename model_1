@@ -1,0 +1,174 @@
+@author: danielmendoza
+
+''' CNN for Image Classification '''
+
+# Importing dependencies
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from sklearn.metrics import classification_report, confusion_matrix, roc_curve, auc
+from sklearn.preprocessing import label_binarize
+
+# Define the directory containing your images (all in one folder)
+dataset_dir = '~/Split'
+ 
+# ImageDataGenerator with validation split (e.g., 80% training, 20% validation)
+datagen = ImageDataGenerator(
+    rescale=1./255,          # Rescale pixel values to [0, 1]
+    validation_split=0.15,    # Reserve 20% of data for validation
+    rotation_range=20,       # Randomly rotate images
+    width_shift_range=0.1,   # Horizontal shifts
+    height_shift_range=0.1,  # Vertical shifts
+    shear_range=0.1,         # Shear transformation
+    zoom_range=0.2,          # Random zoom
+    horizontal_flip=True,    # Randomly flip images horizontally
+    fill_mode='nearest'      # Fill mode for pixels outside input boundaries
+)
+
+
+# Image preprocessing using ImageDataGenerator
+img_size = (128, 128)
+batch_size = 32
+
+# Augmentation and rescaling for training set
+train_datagen = ImageDataGenerator(rescale=1./255, rotation_range=10, width_shift_range=0.2, height_shift_range=0.2, zoom_range=0.2, horizontal_flip=True)
+test_datagen = ImageDataGenerator(rescale=1./255)
+
+
+# Data Generators
+# Load training data from the directory (80% training, 20% validation)
+train_generator = datagen.flow_from_directory(
+    dataset_dir,
+    target_size=img_size,
+    batch_size=batch_size,
+    class_mode='categorical',  # Use 'categorical' if there are multiple classes
+    subset='training'          # Training data
+)
+ 
+validation_generator = datagen.flow_from_directory(
+    dataset_dir,
+    target_size=img_size,
+    batch_size=batch_size,
+    class_mode='categorical',  # Use 'categorical' if there are multiple classes
+    subset='validation'        # Validation data
+)
+
+# Build CNN model
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(128, 128, 3)),
+    tf.keras.layers.MaxPooling2D(2, 2),
+    
+    tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
+    tf.keras.layers.MaxPooling2D(2, 2),
+    
+    tf.keras.layers.Conv2D(128, (3, 3), activation='relu'),
+    tf.keras.layers.MaxPooling2D(2, 2),
+    
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dropout(0.5),
+    tf.keras.layers.Dense(3, activation='softmax')
+])
+
+# Compile the model
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+
+# Model summary
+model.summary()
+
+# Train the model
+history = model.fit(
+    train_generator,
+    steps_per_epoch=train_generator.samples // batch_size,
+    epochs=20,
+    validation_data=validation_generator,
+    validation_steps=validation_generator.samples // batch_size
+)
+
+
+# Learning Curves for Accuracy and Loss
+def plot_learning_curves(history):
+    acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
+    
+    epochs_range = range(len(acc))
+
+    plt.figure(figsize=(12, 6))
+    
+    # Accuracy Plot
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs_range, acc, label='Training Accuracy')
+    plt.plot(epochs_range, val_acc, label='Validation Accuracy')
+    plt.legend(loc='lower right')
+    plt.title('Training and Validation Accuracy')
+
+    # Loss Plot
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs_range, loss, label='Training Loss')
+    plt.plot(epochs_range, val_loss, label='Validation Loss')
+    plt.legend(loc='upper right')
+    plt.title('Training and Validation Loss')
+
+    plt.tight_layout()
+    plt.show()
+
+# Plot learning curves
+plot_learning_curves(history)
+
+# Evaluate model on test set
+validation_loss, test_acc = model.evaluate(validation_generator)
+print(f'Test Accuracy: {test_acc * 100:.2f}%')
+
+# Predicting on the test set
+validation_predictions = model.predict(validation_generator)
+validation_predictions_labels = np.argmax(validation_predictions, axis=1)
+true_labels = validation_generator.classes
+
+#EDA
+categories = ['MC_D_G', 'MC_D_ND', 'UL_D']
+
+# Classification report
+class_report = classification_report(true_labels, validation_predictions_labels, target_names=categories)
+print("Classification Report:")
+print(class_report)
+
+# Confusion matrix
+conf_matrix = confusion_matrix(true_labels, validation_predictions_labels)
+
+# Plot Confusion Matrix
+plt.figure(figsize=(8, 6))
+sns.heatmap(conf_matrix, annot=True, cmap="Blues", fmt="d", xticklabels=categories, yticklabels=categories)
+plt.title("Confusion Matrix")
+plt.xlabel("Predicted Label")
+plt.ylabel("True Label")
+plt.show()
+
+
+# Display 10 sample predictions with actual and predicted labels
+def plot_sample_predictions(validation_generator, num_samples=10):
+    validation_generator.reset()
+    sample_images, sample_labels = next(validation_generator)
+    predictions = model.predict(sample_images)
+    predicted_labels = np.argmax(predictions, axis=1)
+    
+    plt.figure(figsize=(15, 15))
+    for i in range(num_samples):
+        plt.subplot(5, 2, i+1)
+        plt.imshow(sample_images[i])
+        plt.title(f"Actual: {categories[np.argmax(sample_labels[i])]}, Predicted: {categories[predicted_labels[i]]}")
+        plt.axis('off')
+    plt.show()
+
+# Show 10 samples with predictions
+plot_sample_predictions(validation_generator)
+
+
+# Save the model
+model.save('/Users/danielmendoza/Desktop/Fall 2024/Capstone/NIS/NIS-NEU-data-prac-240930/model_1.h5')
