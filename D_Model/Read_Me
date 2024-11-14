@@ -1,0 +1,1 @@
+This folder contains all necessary Python files for image augmentation/transformation to mototgate the effects of an imbalanced dataset. Aditionally, there is a script that will randomly sample from thge majority class folder. 
