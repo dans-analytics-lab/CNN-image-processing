@@ -6,8 +6,10 @@ Created on Fri Nov  8 20:18:22 2024
 @author: danielmendoza
 """
 
-''' CNN for Image Calssification '''
-'''Run on GPUs'''
+''' CNN for Image Classification: Binary D/non-D Classification '''
+'''Use this script as a base to train a neural network on cell images'''
+
+'''Run on GPUs''' #Checking how many GPUs are available to train model faster. 
 import tensorflow as tf
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
