@@ -5,6 +5,6 @@ In each model, we will evaluate how different hyper parameters interact with mod
 
 1. Image size and batch size
 2. Introducing random noise with Image Generation (random zoom, shear, displacement, rotation)
-3. # of hidden layers and # of neurons per layer
+3. Number of hidden layers and # of neurons per layer
 
 Learn how to train a CNN model with me.
